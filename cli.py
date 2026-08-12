@@ -1787,6 +1787,55 @@ def cmd_explain_stability(args):
     finally:
         db.close()
 
+def cmd_intelligence_assess(args):
+    from analytics.intelligence.assessment_service import AssessmentService
+    from datetime import datetime
+    db = SessionLocal()
+    try:
+        dt = datetime.fromisoformat(args.cutoff) if args.cutoff else datetime.utcnow()
+        svc = AssessmentService(db, dt)
+        logger.info(f"Generating Integrated Intelligence Assessment for {args.ticker} at {dt.isoformat()}")
+        
+        assessment = svc.generate_assessment(args.ticker)
+        
+        import json
+        print(f"\n--- Intelligence Assessment: {args.ticker} ---")
+        print(f"Data Cutoff: {assessment.data_cutoff_time.isoformat()}")
+        print(json.dumps(assessment.structured_assessment, indent=2))
+        
+    finally:
+        db.close()
+
+def cmd_intelligence_timeline(args):
+    from analytics.intelligence.timeline import TimelineBuilder
+    from datetime import datetime
+    db = SessionLocal()
+    try:
+        dt = datetime.fromisoformat(args.cutoff) if args.cutoff else datetime.utcnow()
+        builder = TimelineBuilder(db, dt)
+        logger.info(f"Building Event Timeline for {args.ticker} at {dt.isoformat()}")
+        
+        timeline = builder.build_timeline(args.ticker, limit=args.limit)
+        
+        print(f"\n--- Event Timeline: {args.ticker} ---")
+        for ev in timeline:
+            print(f"[{ev['timestamp']}] {ev['type']}: {ev['description']}")
+            
+    finally:
+        db.close()
+
+def cmd_intelligence_validate(args):
+    import pytest
+    import sys
+    print("Running Temporal Integrity Validation Suite...")
+    # This will invoke the pytest suite for temporal integrity
+    retcode = pytest.main(["-v", "tests/analytics/test_temporal_integrity.py"])
+    if retcode == 0:
+        print("\nAll temporal boundaries hold firm. Zero lookahead leakage.")
+    else:
+        print("\nCRITICAL ERROR: Temporal leakage detected.")
+        sys.exit(1)
+
 def _generate_mock_portfolio_data(window: int):
     import numpy as np
     import pandas as pd
@@ -2271,6 +2320,23 @@ def main():
     explain_stability_cmd = explain_subparsers.add_parser("stability", help="Feature stability across time")
     explain_stability_cmd.add_argument("--model-version", required=True, help="Model version to evaluate")
     explain_stability_cmd.set_defaults(func=cmd_explain_stability)
+
+    intelligence_parser = subparsers.add_parser("intelligence", help="Integrated intelligence capabilities")
+    intelligence_subparsers = intelligence_parser.add_subparsers(dest="intelligence_command")
+
+    assess_cmd = intelligence_subparsers.add_parser("assess", help="Generate intelligence assessment")
+    assess_cmd.add_argument("ticker", help="Entity ticker symbol")
+    assess_cmd.add_argument("--cutoff", help="ISO8601 temporal cutoff")
+    assess_cmd.set_defaults(func=cmd_intelligence_assess)
+
+    timeline_cmd = intelligence_subparsers.add_parser("timeline", help="Build event timeline")
+    timeline_cmd.add_argument("ticker", help="Entity ticker symbol")
+    timeline_cmd.add_argument("--cutoff", help="ISO8601 temporal cutoff")
+    timeline_cmd.add_argument("--limit", type=int, default=20, help="Event limit")
+    timeline_cmd.set_defaults(func=cmd_intelligence_timeline)
+
+    validate_cmd = intelligence_subparsers.add_parser("validate", help="Run temporal integrity tests")
+    validate_cmd.set_defaults(func=cmd_intelligence_validate)
 
     args = parser.parse_args()
 

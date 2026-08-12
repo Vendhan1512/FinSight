@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.core.exceptions import setup_exception_handlers
-from app.api import health
+from app.api import health, intelligence
 
 # Setup structured logging
 logger = setup_logging()
@@ -25,6 +25,7 @@ setup_exception_handlers(app)
 
 # Include routers
 app.include_router(health.router, tags=["health"])
+app.include_router(intelligence.router)
 
 @app.get("/")
 def read_root():

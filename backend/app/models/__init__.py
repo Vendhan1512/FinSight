@@ -20,3 +20,4 @@ from .news import NewsSource, NewsArticle, NewsArticleDuplicate, NewsIngestionRu
 from .nlp import NLPProcessingRun, NewsArticleSentiment, NewsArticleEntity, NewsArticleTopic
 from .market_events import NewsMarketEvent, StatisticalRelationship
 from .explainability import LocalExplanation, GlobalImportance, TemporalStability
+from .intelligence import IntelligenceCutoff, IntelligenceAssessment
