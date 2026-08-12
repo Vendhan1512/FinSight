@@ -5,7 +5,7 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
-from backend.app.models.warehouse import DataSource, MarketAsset, MarketPrice
+from app.models.warehouse import DataSource, MarketAsset, MarketPrice
 from backend.app.crud import crud_warehouse
 
 # Note: These tests require a test database to run. 

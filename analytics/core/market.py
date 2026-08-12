@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from sqlalchemy.orm import Session
-from backend.app.models.warehouse import MarketPrice, AnalyticalMarket
+from app.models.warehouse import MarketPrice, AnalyticalMarket
 from analytics.contracts import MarketContract
 from sqlalchemy.dialects.postgresql import insert
 import logging

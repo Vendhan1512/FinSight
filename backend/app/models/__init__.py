@@ -1,5 +1,5 @@
 from app.db.base_class import Base
-from app.models.warehouse import (
+from .warehouse import (
     DataSource,
     IngestionRun,
     DataQualityResult,
@@ -15,4 +15,6 @@ from app.models.warehouse import (
     AnalyticalFRED,
     StatisticalExperiment
 )
-from .features import FeatureDefinition, FeatureVersion, FeatureRun, FeatureQualityResult, FeatureObservation
+from .features import FeatureRun, FeatureObservation
+from .news import NewsSource, NewsArticle, NewsArticleDuplicate, NewsIngestionRun
+from .nlp import NLPProcessingRun, NewsArticleSentiment, NewsArticleEntity, NewsArticleTopic

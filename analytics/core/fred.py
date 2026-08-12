@@ -1,6 +1,6 @@
 import pandas as pd
 from sqlalchemy.orm import Session
-from backend.app.models.warehouse import EconomicObservation, AnalyticalFRED
+from app.models.warehouse import EconomicObservation, AnalyticalFRED
 from analytics.contracts import FREDContract
 from sqlalchemy.dialects.postgresql import insert
 import logging

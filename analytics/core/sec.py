@@ -1,6 +1,6 @@
 import pandas as pd
 from sqlalchemy.orm import Session
-from backend.app.models.warehouse import FinancialFact, SECFiling, AnalyticalSEC
+from app.models.warehouse import FinancialFact, SECFiling, AnalyticalSEC
 from analytics.contracts import SECContract
 from sqlalchemy.dialects.postgresql import insert
 import logging

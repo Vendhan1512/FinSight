@@ -4,7 +4,7 @@ from sqlalchemy import Column, String, Integer, Float, DateTime, Boolean, Foreig
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
-from backend.app.db.session import Base
+from app.db.base_class import Base
 
 class FeatureRun(Base):
     """Records metadata for every batch execution of the Feature Pipeline Orchestrator."""

@@ -4,11 +4,12 @@ import logging
 
 import sys
 import os
+sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), 'backend'))
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
-from backend.app.core.config import settings
-from backend.app.db.session import SessionLocal
-from backend.app.models.warehouse import DataQualityResult, IngestionRun
+from app.core.config import settings
+from app.db.session import SessionLocal
+from app.models.warehouse import DataQualityResult, IngestionRun
 from data_pipeline.orchestrator import PipelineOrchestrator
 from data_pipeline.providers.alpha_vantage import AlphaVantageProvider
 from data_pipeline.providers.sec_edgar import SecEdgarProvider
@@ -48,6 +49,10 @@ from risk.engine.portfolio import PortfolioRiskEngine
 from risk.engine.attribution import RiskAttributionEngine
 from risk.engine.stress import HistoricalStressEngine
 from risk.engine.assessment import RiskAssessmentEngine
+
+from data_pipeline.ingest_news import NewsIngestor
+from data_pipeline.validation.news_validator import NewsQualityEngine
+from app.models.news import NewsIngestionRun
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("finsight.cli")
@@ -162,7 +167,7 @@ def cmd_analytics_validate(args):
 def cmd_analytics_returns(args):
     db = SessionLocal()
     try:
-        from backend.app.models.warehouse import MarketPrice
+        from app.models.warehouse import MarketPrice
         import pandas as pd
         
         symbol = args.symbol
@@ -203,7 +208,7 @@ def cmd_analytics_returns(args):
 def cmd_analytics_macro(args):
     db = SessionLocal()
     try:
-        from backend.app.models.warehouse import AnalyticalMarket, EconomicObservation
+        from app.models.warehouse import AnalyticalMarket, EconomicObservation
         import pandas as pd
         
         symbol = args.symbol
@@ -257,7 +262,7 @@ def cmd_analytics_macro(args):
 def cmd_statistics_experiment(args):
     db = SessionLocal()
     try:
-        from backend.app.models.warehouse import AnalyticalMarket, StatisticalExperiment
+        from app.models.warehouse import AnalyticalMarket, StatisticalExperiment
         import pandas as pd
         
         name = args.name
@@ -332,7 +337,7 @@ def cmd_statistics_experiment(args):
 def cmd_report_eda(args):
     db = SessionLocal()
     try:
-        from backend.app.models.warehouse import AnalyticalMarket, EconomicObservation
+        from app.models.warehouse import AnalyticalMarket, EconomicObservation
         import pandas as pd
         
         symbol = args.symbol
@@ -383,7 +388,7 @@ def cmd_report_eda(args):
 def cmd_features_technical(args):
     db = SessionLocal()
     try:
-        from backend.app.models.warehouse import AnalyticalMarket
+        from app.models.warehouse import AnalyticalMarket
         # Note: In a fully online DB, we would also import FeatureObservation here to save.
         import pandas as pd
         
@@ -431,7 +436,7 @@ def cmd_features_technical(args):
 def cmd_features_risk(args):
     db = SessionLocal()
     try:
-        from backend.app.models.warehouse import AnalyticalMarket, EconomicObservation
+        from app.models.warehouse import AnalyticalMarket, EconomicObservation
         import pandas as pd
         
         symbol = args.symbol
@@ -503,7 +508,7 @@ def cmd_features_risk(args):
 def cmd_features_volume(args):
     db = SessionLocal()
     try:
-        from backend.app.models.warehouse import AnalyticalMarket
+        from app.models.warehouse import AnalyticalMarket
         import pandas as pd
         
         symbol = args.symbol
@@ -562,7 +567,7 @@ def cmd_features_volume(args):
 def cmd_features_fundamental(args):
     db = SessionLocal()
     try:
-        from backend.app.models.sec_data import SECFinancialFact, SECFiling
+        from app.models.sec_data import SECFinancialFact, SECFiling
         import pandas as pd
         
         cik = args.cik
@@ -633,7 +638,7 @@ def cmd_features_fundamental(args):
 def cmd_features_macro(args):
     db = SessionLocal()
     try:
-        from backend.app.models.warehouse import AnalyticalMarket, EconomicObservation
+        from app.models.warehouse import AnalyticalMarket, EconomicObservation
         import pandas as pd
         
         symbol = args.symbol
@@ -725,7 +730,7 @@ def cmd_features_leakage_check(args):
 def cmd_features_cross_sectional(args):
     db = SessionLocal()
     try:
-        from backend.app.models.warehouse import AnalyticalMarket
+        from app.models.warehouse import AnalyticalMarket
         import pandas as pd
         
         target_date = args.date
@@ -1537,6 +1542,115 @@ def cmd_risk_validate(args):
     else:
         print("\n[!] Reproducibility Test FAILED. Calculations contain non-deterministic elements.")
 
+def cmd_news_ingest(args):
+    db = SessionLocal()
+    try:
+        ingestor = NewsIngestor(db)
+        logger.info(f"Running News Ingestion for entity: {args.entity} from {args.from_date} to {args.to_date}")
+        result = ingestor.run_ingestion(args.entity, args.from_date, args.to_date)
+        
+        print(f"\n{'='*60}")
+        print(f" NEWS INGESTION REPORT ".center(60, "="))
+        print(f"{'='*60}")
+        print(f"Run ID:            {result['run_id']}")
+        print(f"Status:            {result['status']}")
+        print(f"Records Requested: {result['records_requested']}")
+        print(f"Records Received:  {result['records_received']}")
+        print(f"Records Inserted:  {result['records_inserted']}")
+        print(f"Duplicates:        {result['duplicates']}")
+        print(f"Errors:            {result['errors']}")
+        print(f"{'='*60}\n")
+    except Exception as e:
+        logger.error(f"News Ingestion Failed: {e}")
+    finally:
+        db.close()
+
+def cmd_news_status(args):
+    db = SessionLocal()
+    try:
+        runs = db.query(NewsIngestionRun).order_by(NewsIngestionRun.start_time.desc()).limit(5).all()
+        print(f"\n{'='*60}")
+        print(f" RECENT NEWS INGESTION RUNS ".center(60, "="))
+        print(f"{'='*60}")
+        for r in runs:
+            print(f"[{r.start_time}] {r.query[:20]:<20} | {r.status:<10} | Inserted: {r.records_inserted} | Dups: {r.duplicates}")
+    finally:
+        db.close()
+
+def cmd_news_quality(args):
+    db = SessionLocal()
+    try:
+        engine = NewsQualityEngine(db)
+        report = engine.run_quality_check()
+        
+        print(f"\n{'='*60}")
+        print(f" NEWS DATA QUALITY REPORT ".center(60, "="))
+        print(f"{'='*60}")
+        print(f"Status:             {report['status']}")
+        print(f"Total Articles:     {report['total_articles']}")
+        print(f"Intercepted Dups:   {report['total_duplicates_intercepted']}")
+        
+        print("\n--- ISSUES DETECTED ---")
+        issues = report['issues']
+        print(f"Missing Pub Time:   {issues['missing_publication_time']}")
+        print(f"Missing URL:        {issues['missing_url']}")
+        print(f"Missing Title:      {issues['missing_title']}")
+        print(f"Future Timestamps:  {issues['future_timestamps']} (LEAKAGE RISK)")
+        print(f"Unhandled Dups:     {issues['unhandled_duplicate_hashes']}")
+        print(f"{'='*60}\n")
+    finally:
+        db.close()
+
+def cmd_news_analyze(args):
+    from ml.nlp.news.pipeline import NewsNLPPipeline
+    db = SessionLocal()
+    try:
+        pipeline = NewsNLPPipeline(db, fallback_mode=args.fallback)
+        logger.info(f"Starting NLP Pipeline. Fallback mode: {args.fallback}")
+        result = pipeline.process_batch(limit=args.limit)
+        print(f"\n--- NLP Analysis Complete ---")
+        print(f"Processed: {result['processed']} articles")
+        print(f"Errors:    {result['errors']}")
+        print(f"Duration:  {result.get('duration', 0.0):.2f}s")
+        if result['processed'] > 0:
+            print(f"Run ID:    {result['run_id']}")
+    finally:
+        db.close()
+
+def cmd_news_entities(args):
+    from app.models.nlp import NewsArticleEntity
+    db = SessionLocal()
+    try:
+        entities = db.query(NewsArticleEntity).limit(20).all()
+        print("\n--- Recent Extracted Entities ---")
+        for e in entities:
+            print(f"{e.canonical_name} ({e.entity_type}) - Method: {e.resolution_method}")
+    finally:
+        db.close()
+
+def cmd_news_topics(args):
+    from app.models.nlp import NewsArticleTopic
+    db = SessionLocal()
+    try:
+        topics = db.query(NewsArticleTopic).limit(20).all()
+        print("\n--- Recent Extracted Topics ---")
+        for t in topics:
+            print(f"{t.topic_name} (Score: {t.topic_score})")
+    finally:
+        db.close()
+
+def cmd_news_sentiment(args):
+    from app.models.nlp import NewsArticleSentiment
+    db = SessionLocal()
+    try:
+        sentiments = db.query(NewsArticleSentiment).limit(20).all()
+        print("\n--- Recent Article Sentiment ---")
+        for s in sentiments:
+            conf = s.confidence if s.confidence is not None else 0.0
+            print(f"Label: {s.sentiment_label}, Confidence: {conf:.2f}")
+    finally:
+        db.close()
+
 def _generate_mock_portfolio_data(window: int):
     import numpy as np
     import pandas as pd
@@ -1615,7 +1729,7 @@ def cmd_risk_attribution(args):
 def cmd_analytics_correlation(args):
     db = SessionLocal()
     try:
-        from backend.app.models.warehouse import AnalyticalMarket, AnalyticalFRED
+        from app.models.warehouse import AnalyticalMarket, AnalyticalFRED
         import pandas as pd
         
         symbols = args.symbols
@@ -1670,7 +1784,7 @@ def cmd_analytics_correlation(args):
 def cmd_eda_distribution(args):
     db = SessionLocal()
     try:
-        from backend.app.models.warehouse import AnalyticalMarket
+        from app.models.warehouse import AnalyticalMarket
         import pandas as pd
         
         symbol = args.symbol
@@ -1967,6 +2081,36 @@ def main():
     
     risk_val_cmd = risk_parsers.add_parser("validate", help="Run Reproducibility Validation")
     risk_val_cmd.set_defaults(func=cmd_risk_validate)
+
+    # Phase 6: News Data Infrastructure
+    news_sub = subparsers.add_parser("news", help="Phase 6: News Data Infrastructure")
+    news_parsers = news_sub.add_subparsers(dest="news_cmd", help="News commands")
+    
+    news_ingest_cmd = news_parsers.add_parser("ingest", help="Ingest real historical news from NewsAPI")
+    news_ingest_cmd.add_argument("--entity", required=True, help="Entity search query, e.g. '\"Apple Inc\" OR AAPL'")
+    news_ingest_cmd.add_argument("--from", dest="from_date", required=True, help="Start date YYYY-MM-DD")
+    news_ingest_cmd.add_argument("--to", dest="to_date", required=True, help="End date YYYY-MM-DD")
+    news_ingest_cmd.set_defaults(func=cmd_news_ingest)
+    
+    news_status_cmd = news_parsers.add_parser("status", help="Show recent news ingestion runs")
+    news_status_cmd.set_defaults(func=cmd_news_status)
+    
+    news_quality_cmd = news_parsers.add_parser("quality", help="Run news data quality checks")
+    news_quality_cmd.set_defaults(func=cmd_news_quality)
+
+    news_analyze_cmd = news_parsers.add_parser("analyze", help="Run NLP processing pipeline on ingested news")
+    news_analyze_cmd.add_argument("--limit", type=int, default=100, help="Max articles to process")
+    news_analyze_cmd.add_argument("--fallback", action="store_true", help="Run without heavy ML dependencies (demo mode)")
+    news_analyze_cmd.set_defaults(func=cmd_news_analyze)
+
+    news_entities_cmd = news_parsers.add_parser("entities", help="Show recently extracted entities")
+    news_entities_cmd.set_defaults(func=cmd_news_entities)
+
+    news_topics_cmd = news_parsers.add_parser("topics", help="Show recently extracted topics")
+    news_topics_cmd.set_defaults(func=cmd_news_topics)
+
+    news_sentiment_cmd = news_parsers.add_parser("sentiment", help="Show recently computed sentiment")
+    news_sentiment_cmd.set_defaults(func=cmd_news_sentiment)
 
     args = parser.parse_args()
 

@@ -5,8 +5,8 @@ from ml.features.validation.contracts import FeatureDefinitionContract
 from ml.features.technical.definitions import TECHNICAL_FEATURES
 from ml.features.technical.engine import TechnicalFeatureEngine
 
-from ml.features.volatility.definitions import VOLATILITY_FEATURES
-from ml.features.volatility.engine import VolatilityFeatureEngine
+from ml.features.volatility.definitions import RISK_FEATURES as VOLATILITY_FEATURES
+from ml.features.volatility.engine import VolatilityAndRiskEngine as VolatilityFeatureEngine
 
 from ml.features.volume.definitions import VOLUME_FEATURES
 from ml.features.volume.engine import VolumeFeatureEngine

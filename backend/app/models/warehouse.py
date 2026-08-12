@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Date, DateTime, Numeric, Boolean, Integer, UniqueConstraint, ForeignKey, BigInteger
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import Column, String, Date, DateTime, Numeric, Boolean, Integer, UniqueConstraint, ForeignKey, BigInteger, Float, JSON
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from app.db.base_class import Base
@@ -27,7 +27,7 @@ class DataQualityResult(Base):
     run_id = Column(UUID(as_uuid=True), ForeignKey("ingestion_runs.id"), nullable=False)
     check_type = Column(String, nullable=False)
     passed = Column(Boolean, nullable=False)
-    details = Column(JSONB, nullable=True)
+    details = Column(JSON, nullable=True)
 
 class SECCompany(Base):
     __tablename__ = "sec_companies"

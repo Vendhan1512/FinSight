@@ -5,7 +5,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 
 # Import the Base from the existing schema to attach to the same metadata
-from backend.app.models.base import Base
+from app.models.base import Base
 
 class Portfolio(Base):
     """

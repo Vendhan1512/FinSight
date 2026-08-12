@@ -7,7 +7,7 @@ from ml.features.registry import FeatureRegistry
 from ml.features.validation.pit_engine import LeakageValidator, LeakageDetectedError
 from ml.features.validation.quality_engine import FeatureQualityEngine
 from ml.features.selection.selector import FeatureSelectionEngine
-from backend.app.models.features import FeatureRun
+from app.models.features import FeatureRun
 
 logger = logging.getLogger(__name__)
 
