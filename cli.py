@@ -1849,7 +1849,9 @@ def cmd_pipeline_run(args):
         engine.execute_pipeline(run_id)
         
         from app.models.orchestration import PipelineRun
-        run = db.query(PipelineRun).filter(PipelineRun.run_id == run_id).first()
+        import uuid
+        run_uuid = uuid.UUID(run_id) if isinstance(run_id, str) else run_id
+        run = db.query(PipelineRun).filter(PipelineRun.run_id == run_uuid).first()
         print(f"Pipeline Completed with Status: {run.status}")
         
     finally:
