@@ -37,6 +37,10 @@ from .robustness import (
     RobustnessAblationMetrics,
     RobustnessAblationFoldMetrics
 )
+from .reproducibility import (
+    ReproducibilityManifest,
+    ReproducibilityRun
+)
 
 __all__ = [
     "Base", 
@@ -60,5 +64,7 @@ __all__ = [
     "RobustnessTimeMetrics",
     "RobustnessRegimeMetrics",
     "RobustnessAblationMetrics",
-    "RobustnessAblationFoldMetrics"
+    "RobustnessAblationFoldMetrics",
+    "ReproducibilityManifest",
+    "ReproducibilityRun"
 ]

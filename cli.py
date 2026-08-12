@@ -2172,6 +2172,55 @@ def cmd_research_ablation(args):
     finally:
         db.close()
 
+def cmd_research_reproduce(args):
+    print("\n" + "="*50)
+    print(f"FINSIGHT REPRODUCIBILITY ENGINE (EXP: {args.target})")
+    print("="*50)
+    from app.db.session import SessionLocal
+    from analytics.research.reproducibility_engine import ReproducibilityEngine
+    db = SessionLocal()
+    try:
+        engine = ReproducibilityEngine(db)
+        run = engine.execute_clean_reproduction(args.target)
+        print(f"Status: {run.status}")
+        print(f"Differences: {run.absolute_differences}")
+    except Exception as e:
+        print(f"[!] Reproduction failed: {e}")
+    finally:
+        db.close()
+
+def cmd_research_verify(args):
+    print("\n" + "="*50)
+    print("FINSIGHT INDEPENDENT VALIDATION SUITE (PHASE 8 SPRINT 8.4)")
+    print("="*50)
+    from app.db.session import SessionLocal
+    from analytics.research.reproducibility_engine import ReproducibilityEngine
+    db = SessionLocal()
+    try:
+        engine = ReproducibilityEngine(db)
+        results = engine.run_verification_suite()
+        
+        print(f"\n--- REPRODUCIBILITY STATUS ---")
+        for m, r in results:
+            status_color = "[PASSED]" if r.status == "PASSED" else "[FAILED]"
+            print(f"{m.experiment_type} ({m.experiment_id}): {status_color}")
+            if r.absolute_differences:
+                diff_str = ", ".join([f"{k}: diff={v}" for k, v in r.absolute_differences.items() if v != 0.0])
+                if diff_str:
+                    print(f"  -> Variances: {diff_str}")
+            
+        failures = sum(1 for _, r in results if r.status == "FAILED")
+        print("\n=== VALIDATION CONCLUSION ===")
+        print(f"Total Experiments Verified: {len(results)}")
+        print(f"Failed Reproductions: {failures}")
+        if failures == 0:
+            print("Status: FULLY REPRODUCIBLE")
+        else:
+            print("Status: REPRODUCIBILITY COMPROMISED")
+        print("="*50)
+    finally:
+        db.close()
+
 def _generate_mock_portfolio_data(window: int):
     import numpy as np
     import pandas as pd
@@ -2921,6 +2970,9 @@ def main():
     research_subparsers = parser_research.add_subparsers(dest="research_type", help="Research study to run")
     research_subparsers.add_parser("robustness", help="Evaluate robustness across assets, time, and regimes")
     research_subparsers.add_parser("ablation", help="Evaluate incremental feature value")
+    research_subparsers.add_parser("verify", help="Run independent validation suite")
+    repro_parser = research_subparsers.add_parser("reproduce", help="Reproduce a specific experiment")
+    repro_parser.add_argument("--target", required=True, help="Manifest Experiment ID to reproduce")
 
     args = parser.parse_args()
 
@@ -2974,6 +3026,10 @@ def main():
             cmd_research_robustness(args)
         elif args.research_type == "ablation":
             cmd_research_ablation(args)
+        elif args.research_type == "verify":
+            cmd_research_verify(args)
+        elif args.research_type == "reproduce":
+            cmd_research_reproduce(args)
         else:
             parser_research.print_help()
     else:
