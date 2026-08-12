@@ -9,6 +9,10 @@ from app.models.monitoring import SystemAlert, DataQualityMetric, ModelPerforman
 
 router = APIRouter()
 
+@router.get("/system/health")
+def health_check():
+    return {"status": "ok", "version": "1.0.0"}
+
 @router.get("/alerts")
 def get_alerts(
     status: str = "ACTIVE",

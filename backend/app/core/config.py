@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     # SEC EDGAR
     sec_user_agent: str = "FinSight/1.0 (developer@example.com)"
 
+    # Security
+    jwt_secret_key: str = "DEFAULT_SECRET_KEY_REPLACE_IN_PRODUCTION"
+    jwt_algorithm: str = "HS256"
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     @property
