@@ -22,3 +22,4 @@ from .market_events import NewsMarketEvent, StatisticalRelationship
 from .explainability import LocalExplanation, GlobalImportance, TemporalStability
 from .intelligence import IntelligenceCutoff, IntelligenceAssessment
 from .orchestration import PipelineRun, PipelineJob, DataFreshness
+from .auth import User

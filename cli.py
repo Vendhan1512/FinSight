@@ -1890,6 +1890,55 @@ def cmd_pipeline_history(args):
     finally:
         db.close()
 
+def cmd_api_bootstrap(args):
+    from app.db.session import SessionLocal
+    from app.models.auth import User
+    from app.core import security
+    
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter(User.username == "admin").first()
+        if not admin:
+            admin = User(
+                username="admin",
+                hashed_password=security.get_password_hash("admin123"), # Default password for sprint
+                role="ADMIN"
+            )
+            db.add(admin)
+        
+        analyst = db.query(User).filter(User.username == "analyst").first()
+        if not analyst:
+            analyst = User(
+                username="analyst",
+                hashed_password=security.get_password_hash("analyst123"),
+                role="ANALYST"
+            )
+            db.add(analyst)
+            
+        viewer = db.query(User).filter(User.username == "viewer").first()
+        if not viewer:
+            viewer = User(
+                username="viewer",
+                hashed_password=security.get_password_hash("viewer123"),
+                role="VIEWER"
+            )
+            db.add(viewer)
+            
+        db.commit()
+        print("Successfully bootstrapped API users: 'admin', 'analyst', 'viewer'")
+    finally:
+        db.close()
+
+def cmd_api_validate(args):
+    import pytest
+    import sys
+    print("Running API Security & Lineage Validation Suite...")
+    exit_code = pytest.main(["-v", "tests/api"])
+    if exit_code != 0:
+        print("\nCRITICAL ERROR: API validation failed.")
+        sys.exit(1)
+    print("\nAPI validation completed successfully.")
+
 def _generate_mock_portfolio_data(window: int):
     import numpy as np
     import pandas as pd
@@ -2404,6 +2453,15 @@ def main():
 
     pipeline_history_cmd = pipeline_subparsers.add_parser("history", help="Get pipeline run history")
     pipeline_history_cmd.set_defaults(func=cmd_pipeline_history)
+
+    api_parser = subparsers.add_parser("api", help="API Management and Testing")
+    api_subparsers = api_parser.add_subparsers(dest="api_command")
+
+    api_bootstrap_cmd = api_subparsers.add_parser("bootstrap", help="Seed default users (admin, analyst, viewer)")
+    api_bootstrap_cmd.set_defaults(func=cmd_api_bootstrap)
+
+    api_validate_cmd = api_subparsers.add_parser("validate", help="Run API security and lineage tests")
+    api_validate_cmd.set_defaults(func=cmd_api_validate)
 
     args = parser.parse_args()
 
