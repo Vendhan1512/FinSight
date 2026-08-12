@@ -1651,6 +1651,49 @@ def cmd_news_sentiment(args):
     finally:
         db.close()
 
+def cmd_news_event_study(args):
+    from ml.nlp.market_alignment.event_builder import EventBuilder
+    db = SessionLocal()
+    try:
+        builder = EventBuilder(db, benchmark_ticker=args.benchmark)
+        logger.info(f"Building Market Events for {args.ticker} using {args.benchmark} as benchmark.")
+        res = builder.build_events_for_ticker(args.ticker)
+        print(f"\n--- Event Study Builder ---")
+        if res.get("status") == "error":
+            print(f"Error: {res.get('message')}")
+        else:
+            print(f"Ticker: {res['ticker']}")
+            print(f"Events Created: {res['events_created']}")
+            print(f"Events Skipped (No Market Data): {res['events_skipped_no_market_data']}")
+    finally:
+        db.close()
+
+def cmd_news_market_relationship(args):
+    from ml.nlp.statistics.relationship_engine import RelationshipEngine
+    from app.models.market_events import StatisticalRelationship
+    db = SessionLocal()
+    try:
+        engine = RelationshipEngine(db)
+        logger.info(f"Running Statistical Relationship Engine (Horizon: {args.horizon})")
+        
+        s_res = engine.run_sentiment_analysis(horizon=args.horizon)
+        t_res = engine.run_topic_analysis(horizon=args.horizon)
+        
+        print(f"\n--- Statistical Relationships (Horizon: {args.horizon}) ---")
+        
+        rels = db.query(StatisticalRelationship).filter(StatisticalRelationship.horizon == args.horizon).order_by(StatisticalRelationship.created_at.desc()).limit(10).all()
+        if not rels:
+            print("No relationships found (insufficient data).")
+            return
+            
+        for r in rels:
+            print(f"\nTest: {r.test_type}")
+            print(f"Sample Size: {r.sample_size}")
+            print(f"Method: {r.methodology} (Correction: {r.multiple_testing_correction})")
+            print(f"Finding: {r.finding_description}")
+    finally:
+        db.close()
+
 def _generate_mock_portfolio_data(window: int):
     import numpy as np
     import pandas as pd
@@ -2111,6 +2154,15 @@ def main():
 
     news_sentiment_cmd = news_parsers.add_parser("sentiment", help="Show recently computed sentiment")
     news_sentiment_cmd.set_defaults(func=cmd_news_sentiment)
+
+    news_event_study_cmd = news_parsers.add_parser("event-study", help="Align news events with market data")
+    news_event_study_cmd.add_argument("--ticker", required=True, help="Ticker to build events for")
+    news_event_study_cmd.add_argument("--benchmark", default="SPY", help="Benchmark ticker for abnormal returns")
+    news_event_study_cmd.set_defaults(func=cmd_news_event_study)
+
+    news_relationship_cmd = news_parsers.add_parser("market-relationship", help="Compute statistical relationships")
+    news_relationship_cmd.add_argument("--horizon", default="1d", choices=["1d", "5d", "20d"], help="Observation horizon")
+    news_relationship_cmd.set_defaults(func=cmd_news_market_relationship)
 
     args = parser.parse_args()
 

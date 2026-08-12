@@ -18,3 +18,4 @@ from .warehouse import (
 from .features import FeatureRun, FeatureObservation
 from .news import NewsSource, NewsArticle, NewsArticleDuplicate, NewsIngestionRun
 from .nlp import NLPProcessingRun, NewsArticleSentiment, NewsArticleEntity, NewsArticleTopic
+from .market_events import NewsMarketEvent, StatisticalRelationship
