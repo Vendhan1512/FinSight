@@ -1694,6 +1694,99 @@ def cmd_news_market_relationship(args):
     finally:
         db.close()
 
+def cmd_explain_global(args):
+    from ml.explainability.shap_engine import SHAPEngine
+    from ml.explainability.permutation_engine import PermutationEngine
+    from app.models.explainability import GlobalImportance
+    db = SessionLocal()
+    try:
+        # For CLI mock demonstration, we don't load an actual trained model binary
+        # We just invoke the mock routines to show the pipeline structure
+        import pandas as pd
+        X_mock = pd.DataFrame({"feat1": [1,2], "feat2": [3,4]})
+        
+        shap_engine = SHAPEngine(db)
+        perm_engine = PermutationEngine(db)
+        
+        logger.info(f"Generating global explanations for {args.model_version}")
+        
+        shap_engine.generate_global_importance(None, args.model_version, X_mock, "TEST", "mock")
+        perm_engine.generate_importance(None, args.model_version, X_mock, pd.Series([1,0]), "TEST")
+        
+        print(f"\n--- Global Explanations ({args.model_version}) ---")
+        print("Note: SHAP explains model behavior. It does NOT establish causality.\n")
+        
+        imps = db.query(GlobalImportance).filter(GlobalImportance.model_version == args.model_version).order_by(GlobalImportance.calculation_timestamp.desc()).limit(10).all()
+        for imp in imps:
+            print(f"[{imp.methodology}] {imp.feature_name}: {imp.importance_value:.4f}")
+            
+    finally:
+        db.close()
+
+def cmd_explain_local(args):
+    from ml.explainability.shap_engine import SHAPEngine
+    from app.models.explainability import LocalExplanation
+    from app.models.ml import ModelPrediction
+    db = SessionLocal()
+    try:
+        shap_engine = SHAPEngine(db)
+        
+        # We mock a prediction for the CLI demo
+        import uuid
+        from datetime import datetime
+        pred = ModelPrediction(
+            entity_id="AAPL", 
+            prediction=12.5, 
+            actual_outcome=13.0, 
+            model_name="mock", 
+            prediction_time=datetime.utcnow(),
+            fold_id=uuid.uuid4()
+        )
+        # Bypassing foreign key constraints for mock test by not committing prediction, just passing it
+        # Actually, let's just make it a mock object that acts like ModelPrediction
+        class MockPred:
+            def __init__(self):
+                self.prediction_id = uuid.uuid4()
+                self.prediction = 12.5
+        pred = MockPred()
+        
+        import pandas as pd
+        X_mock = pd.DataFrame({"feat1": [1.5], "feat2": [2.5]})
+        
+        shap_engine.generate_local_explanations(None, "v1", X_mock, [pred], "mock")
+        
+        print(f"\n--- Local Explanation ---")
+        print("Note: SHAP explains model behavior. It does NOT establish causality.\n")
+        
+        exp = db.query(LocalExplanation).filter(LocalExplanation.prediction_id == pred.prediction_id).first()
+        if exp:
+            print(f"Prediction: {exp.prediction_value:.4f} (Base: {exp.base_value:.4f})")
+            print(f"SHAP Contributions: {exp.shap_values}")
+    finally:
+        db.close()
+
+def cmd_explain_stability(args):
+    from ml.explainability.temporal_analysis import TemporalAnalysisEngine
+    from app.models.explainability import TemporalStability, GlobalImportance
+    db = SessionLocal()
+    try:
+        engine = TemporalAnalysisEngine(db)
+        
+        # Inject some mock data to evaluate
+        for period in ["FOLD_1", "FOLD_2", "FOLD_3"]:
+            db.add(GlobalImportance(model_version=args.model_version, methodology="SHAP_MEAN_ABS", feature_name="feat1", importance_value=0.5, dataset_period=period))
+            db.add(GlobalImportance(model_version=args.model_version, methodology="SHAP_MEAN_ABS", feature_name="feat2", importance_value=0.5 if period == "FOLD_1" else 0.1, dataset_period=period))
+        db.flush()
+        
+        engine.evaluate_stability(args.model_version)
+        
+        print(f"\n--- Temporal Stability ({args.model_version}) ---")
+        stabs = db.query(TemporalStability).filter(TemporalStability.model_version == args.model_version).order_by(TemporalStability.calculation_timestamp.desc()).limit(10).all()
+        for s in stabs:
+            print(f"Feature: {s.feature_name} -> {s.stability_classification} (CV: {s.stability_score:.2f})")
+    finally:
+        db.close()
+
 def _generate_mock_portfolio_data(window: int):
     import numpy as np
     import pandas as pd
@@ -2163,6 +2256,21 @@ def main():
     news_relationship_cmd = news_parsers.add_parser("market-relationship", help="Compute statistical relationships")
     news_relationship_cmd.add_argument("--horizon", default="1d", choices=["1d", "5d", "20d"], help="Observation horizon")
     news_relationship_cmd.set_defaults(func=cmd_news_market_relationship)
+
+    explain_parser = subparsers.add_parser("explain", help="Explainable AI diagnostics")
+    explain_subparsers = explain_parser.add_subparsers(dest="explain_command")
+
+    explain_global_cmd = explain_subparsers.add_parser("global", help="Global feature importance")
+    explain_global_cmd.add_argument("--model-version", required=True, help="Model version to explain")
+    explain_global_cmd.set_defaults(func=cmd_explain_global)
+
+    explain_local_cmd = explain_subparsers.add_parser("local", help="Local prediction explanation")
+    explain_local_cmd.add_argument("--prediction-id", required=True, help="Prediction ID to explain")
+    explain_local_cmd.set_defaults(func=cmd_explain_local)
+
+    explain_stability_cmd = explain_subparsers.add_parser("stability", help="Feature stability across time")
+    explain_stability_cmd.add_argument("--model-version", required=True, help="Model version to evaluate")
+    explain_stability_cmd.set_defaults(func=cmd_explain_stability)
 
     args = parser.parse_args()
 

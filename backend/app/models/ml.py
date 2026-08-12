@@ -4,7 +4,7 @@ from sqlalchemy import Column, String, Float, DateTime, ForeignKey, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
-from backend.app.db.session import Base
+from app.db.base_class import Base
 
 class SupervisedDataset(Base):
     """Configuration and metadata for a specific machine learning dataset build."""
