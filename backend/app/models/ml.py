@@ -193,7 +193,7 @@ class RegisteredModel(Base):
     name = Column(String, nullable=False, index=True)
     version = Column(String, nullable=False, index=True)
     
-    experiment_run_id = Column(UUID(as_uuid=True), ForeignKey("experiment_runs.run_id"), nullable=False)
+    experiment_run_id = Column(UUID(as_uuid=True), ForeignKey("experiment_runs.experiment_id"), nullable=False)
     
     # Strictly enforced statuses: EXPERIMENTAL -> VALIDATED -> CANDIDATE -> PRODUCTION
     status = Column(String, nullable=False, default="EXPERIMENTAL")
