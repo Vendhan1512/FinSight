@@ -10,20 +10,31 @@ logger = logging.getLogger(__name__)
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+        request_id = str(uuid.uuid4())
         request.state.request_id = request_id
         
         start_time = time.time()
         
-        response = await call_next(request)
-        
-        process_time = time.time() - start_time
-        response.headers["X-Request-ID"] = request_id
-        response.headers["X-Process-Time"] = str(process_time)
-        
-        logger.info(f"[{request_id}] {request.method} {request.url.path} - {response.status_code}")
-        
-        return response
+        try:
+            response = await call_next(request)
+            process_time = time.time() - start_time
+            
+            # Log observability metrics
+            logger.info(
+                f"[{request_id}] {request.method} {request.url.path} - {response.status_code} "
+                f"- {process_time:.4f}s"
+            )
+            
+            response.headers["X-Request-ID"] = request_id
+            response.headers["X-Process-Time"] = str(process_time)
+            return response
+        except Exception as e:
+            process_time = time.time() - start_time
+            logger.error(
+                f"[{request_id}] {request.method} {request.url.path} - 500 "
+                f"- {process_time:.4f}s - {str(e)}"
+            )
+            raise e
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """

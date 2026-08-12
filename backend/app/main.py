@@ -7,7 +7,7 @@ from app.core.exceptions import setup_exception_handlers
 from app.middleware import RequestIDMiddleware, RateLimitMiddleware
 
 from app.api import health
-from app.api.v1 import auth, intelligence, system
+from app.api.v1 import auth, intelligence, system, monitoring
 
 # Setup structured logging
 logger = setup_logging()
@@ -33,6 +33,7 @@ app.include_router(health.router, tags=["health"])
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(intelligence.router, prefix="/api/v1/intelligence", tags=["intelligence"])
 app.include_router(system.router, prefix="/api/v1/system", tags=["system"])
+app.include_router(monitoring.router, prefix="/api/v1/monitoring", tags=["monitoring"])
 
 @app.get("/")
 def read_root():

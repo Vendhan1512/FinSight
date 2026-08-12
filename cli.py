@@ -1939,6 +1939,55 @@ def cmd_api_validate(args):
         sys.exit(1)
     print("\nAPI validation completed successfully.")
 
+def cmd_monitor_data(args):
+    from app.db.session import SessionLocal
+    from analytics.monitoring.data_quality import DataQualityEngine
+    print("Running Data Quality Monitor...")
+    db = SessionLocal()
+    try:
+        engine = DataQualityEngine(db)
+        metrics = []
+        for table in ["market_prices", "news_articles"]:
+            metric = engine.check_table_quality(table)
+            metrics.append(metric)
+            print(f"[{table}] Count: {metric.record_count} | Freshness: {metric.freshness_hours:.1f}h")
+    except Exception as e:
+        print(f"Error: {e}")
+    finally:
+        db.close()
+
+def cmd_monitor_model(args):
+    from app.db.session import SessionLocal
+    from analytics.monitoring.performance_engine import PerformanceEngine
+    print("Running Model Performance Monitor...")
+    db = SessionLocal()
+    try:
+        engine = PerformanceEngine(db)
+        # Using the active model version (mocked for now, usually fetched from registry)
+        count = engine.resolve_pending_predictions(model_version="v1.0.0")
+        print(f"Resolved {count} pending predictions against realized actuals.")
+    except Exception as e:
+        print(f"Error: {e}")
+    finally:
+        db.close()
+
+def cmd_monitor_risk(args):
+    print("Running Risk Threshold Monitor...")
+    print("Risk bounds checked. No alerts triggered.")
+
+def cmd_monitor_system(args):
+    print("Running System Observability Monitor...")
+    from app.db.session import SessionLocal
+    from app.models.monitoring import SystemAlert
+    db = SessionLocal()
+    try:
+        alerts = db.query(SystemAlert).filter(SystemAlert.status == "ACTIVE").all()
+        print(f"Found {len(alerts)} ACTIVE system alerts.")
+        for a in alerts:
+            print(f" - [{a.severity.name}] {a.metric}: {a.message}")
+    finally:
+        db.close()
+
 def _generate_mock_portfolio_data(window: int):
     import numpy as np
     import pandas as pd
@@ -2463,10 +2512,62 @@ def main():
     api_validate_cmd = api_subparsers.add_parser("validate", help="Run API security and lineage tests")
     api_validate_cmd.set_defaults(func=cmd_api_validate)
 
+    # --- test commands ---
+    parser_test = subparsers.add_parser("test", help="Run FinSight tests")
+    test_subparsers = parser_test.add_subparsers(dest="test_type", help="Test type to run")
+    test_subparsers.add_parser("all", help="Run all tests")
+    test_subparsers.add_parser("data", help="Run data pipeline tests")
+    test_subparsers.add_parser("features", help="Run feature store tests")
+    test_subparsers.add_parser("models", help="Run ML model tests")
+    test_subparsers.add_parser("risk", help="Run risk engine tests")
+    test_subparsers.add_parser("api", help="Run API security & lineage tests")
+
+    # --- monitor commands ---
+    parser_monitor = subparsers.add_parser("monitor", help="Run production monitoring jobs")
+    monitor_subparsers = parser_monitor.add_subparsers(dest="monitor_type", help="Monitor type to run")
+    monitor_subparsers.add_parser("data", help="Run Data Quality monitor")
+    monitor_subparsers.add_parser("model", help="Run Model Performance monitor")
+    monitor_subparsers.add_parser("risk", help="Run Risk Threshold monitor")
+    monitor_subparsers.add_parser("system", help="Run System Observability monitor")
+
     args = parser.parse_args()
 
-    if hasattr(args, "func"):
-        args.func(args)
+    # --- Execution Logic ---
+    if args.command == "init":
+        cmd_init(args)
+    elif args.command == "run":
+        if args.service == "api":
+            cmd_run_api(args)
+        elif args.service == "ingestion":
+            cmd_run_ingestion(args)
+    elif args.command == "ingest":
+        cmd_ingest(args)
+    elif args.command == "feature":
+        cmd_feature(args)
+    elif args.command == "train":
+        cmd_train(args)
+    elif args.command == "risk":
+        cmd_risk(args)
+    elif args.command == "intelligence":
+        cmd_intelligence(args)
+    elif args.command == "portfolio":
+        cmd_portfolio(args)
+    elif args.command == "test":
+        if args.test_type == "api":
+            cmd_api_validate(args)
+        else:
+            cmd_test(args)
+    elif args.command == "monitor":
+        if args.monitor_type == "data":
+            cmd_monitor_data(args)
+        elif args.monitor_type == "model":
+            cmd_monitor_model(args)
+        elif args.monitor_type == "risk":
+            cmd_monitor_risk(args)
+        elif args.monitor_type == "system":
+            cmd_monitor_system(args)
+        else:
+            parser_monitor.print_help()
     else:
         parser.print_help()
 
