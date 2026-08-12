@@ -2078,6 +2078,62 @@ def cmd_system_smoke_test(args):
         sys.exit(1)
     print("\n[SUCCESS] Smoke test PASSED. System is stable.")
 
+def cmd_research_robustness(args):
+    print("\n" + "="*50)
+    print("FINSIGHT ROBUSTNESS STUDY (PHASE 8 SPRINT 8.2)")
+    print("="*50)
+    
+    from app.db.session import SessionLocal
+    from analytics.research.robustness_engine import RobustnessEngine
+    
+    db = SessionLocal()
+    try:
+        engine = RobustnessEngine(db)
+        results = engine.run_full_robustness_study()
+        
+        assets = results.get("assets", [])
+        times = results.get("time", [])
+        regimes = results.get("regimes", [])
+        
+        if not assets:
+            print("\n[!] Error: No data available for robust universe. Check database ingestion.")
+            return
+            
+        print(f"\n--- ASSET STABILITY ---")
+        stable = [a for a in assets if a.status == "STABLE"]
+        unstable = [a for a in assets if a.status == "UNSTABLE"]
+        print(f"Total Assets Evaluated: {len(assets)}")
+        print(f"Stable Assets: {len(stable)}")
+        print(f"Unstable Assets: {len(unstable)}")
+        if unstable:
+            print("Unstable Tickers: " + ", ".join([a.entity_id for a in unstable]))
+            
+        print(f"\n--- TIME STABILITY ---")
+        if times:
+            best = next((t for t in times if t.is_best_period == 1), None)
+            worst = next((t for t in times if t.is_worst_period == 1), None)
+            beating = sum(1 for t in times if t.beats_baseline == 1)
+            print(f"Periods Evaluated: {len(times)} years")
+            print(f"Periods Beating Baseline: {beating}/{len(times)}")
+            if best: print(f"Best Period: {best.period_start.year} (Acc: {best.accuracy:.2f})")
+            if worst: print(f"Worst Period: {worst.period_start.year} (Acc: {worst.accuracy:.2f})")
+            
+        print(f"\n--- REGIME STABILITY ---")
+        if regimes:
+            for r in regimes:
+                beats = "YES" if r.beats_baseline else "NO"
+                print(f"[{r.regime_label}] N={r.sample_size} | Acc={r.accuracy:.2f} | Beats Baseline: {beats}")
+                
+        print("\n=== STUDY CONCLUSION ===")
+        print("1. Does the model generalize? " + ("YES" if len(stable) > len(unstable) else "NO"))
+        print(f"2. Where does it fail? Assets: {', '.join([a.entity_id for a in unstable])}")
+        print(f"3. Which periods are unstable? " + (str(worst.period_start.year) if worst else "None"))
+        print("4. Is performance regime-dependent? " + ("YES" if len(set([r.beats_baseline for r in regimes])) > 1 else "NO (Consistent)"))
+        print("="*50)
+        
+    finally:
+        db.close()
+
 def _generate_mock_portfolio_data(window: int):
     import numpy as np
     import pandas as pd
@@ -2822,6 +2878,11 @@ def main():
     prov_parser.add_argument("--target", required=True, help="Entity ID to trace")
     system_subparsers.add_parser("smoke-test", help="Run E2E production smoke test")
 
+    # --- research commands ---
+    parser_research = subparsers.add_parser("research", help="Run empirical research studies")
+    research_subparsers = parser_research.add_subparsers(dest="research_type", help="Research study to run")
+    research_subparsers.add_parser("robustness", help="Evaluate robustness across assets, time, and regimes")
+
     args = parser.parse_args()
 
     # --- Execution Logic ---
@@ -2869,6 +2930,11 @@ def main():
             cmd_system_smoke_test(args)
         else:
             parser_system.print_help()
+    elif args.command == "research":
+        if args.research_type == "robustness":
+            cmd_research_robustness(args)
+        else:
+            parser_research.print_help()
     else:
         parser.print_help()
 
