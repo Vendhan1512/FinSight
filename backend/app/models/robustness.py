@@ -45,3 +45,26 @@ class RobustnessRegimeMetrics(Base):
     accuracy = Column(Float)
     f1_score = Column(Float)
     beats_baseline = Column(Integer)  # 0 or 1
+
+class RobustnessAblationMetrics(Base):
+    __tablename__ = "robustness_ablation_metrics"
+
+    id = Column(Integer, primary_key=True, index=True)
+    experiment_id = Column(String, index=True)
+    group_name = Column(String) # Group A, B, C, D, E
+    feature_count = Column(Integer)
+    mean_accuracy = Column(Float)
+    mean_f1 = Column(Float)
+    incremental_accuracy = Column(Float) # Compared to previous group
+    is_stable = Column(Integer) # 1 if all folds beat baseline
+
+class RobustnessAblationFoldMetrics(Base):
+    __tablename__ = "robustness_ablation_fold_metrics"
+
+    id = Column(Integer, primary_key=True, index=True)
+    experiment_id = Column(String, index=True)
+    group_name = Column(String)
+    fold_index = Column(Integer)
+    accuracy = Column(Float)
+    baseline_accuracy = Column(Float)
+    incremental_improvement = Column(Float) # Accuracy over previous group for this fold
