@@ -77,6 +77,8 @@ class OrchestrationEngine:
         
     def execute_pipeline(self, run_id: str):
         """Executes the resolved DAG linearly. Handles retries and state tracking."""
+        import uuid
+        run_uuid = uuid.UUID(run_id) if isinstance(run_id, str) else run_id
         try:
             execution_order = self.resolve_dag()
             logger.info(f"Pipeline {run_id} execution order: {execution_order}")
@@ -129,7 +131,7 @@ class OrchestrationEngine:
         has_failures = any(s in ["FAILED", "SKIPPED"] for s in job_statuses.values())
         final_status = "FAILED" if has_failures else "SUCCESS"
         
-        run = self.db.scalars(select(PipelineRun).where(PipelineRun.run_id == run_id)).first()
+        run = self.db.scalars(select(PipelineRun).where(PipelineRun.run_id == run_uuid)).first()
         if run:
             run.status = final_status
             run.completed_at = datetime.utcnow()
@@ -138,7 +140,9 @@ class OrchestrationEngine:
         logger.info(f"Pipeline {run_id} finished with status {final_status}")
 
     def _fail_run(self, run_id: str, error_summary: str):
-        run = self.db.scalars(select(PipelineRun).where(PipelineRun.run_id == run_id)).first()
+        import uuid
+        run_uuid = uuid.UUID(run_id) if isinstance(run_id, str) else run_id
+        run = self.db.scalars(select(PipelineRun).where(PipelineRun.run_id == run_uuid)).first()
         if run:
             run.status = "FAILED"
             run.completed_at = datetime.utcnow()
