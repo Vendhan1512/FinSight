@@ -12,7 +12,7 @@ from app.models.warehouse import AnalyticalMarket
 from app.models.news import NewsArticle
 from app.models.nlp import NewsArticleSentiment, NewsArticleTopic, NewsArticleEntity
 from app.models.ml import ModelPrediction
-from app.models.risk import PortfolioRisk
+from app.models.risk import RiskAssessment
 from app.models.market_events import StatisticalRelationship
 from app.models.explainability import LocalExplanation, GlobalImportance
 

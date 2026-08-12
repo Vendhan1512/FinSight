@@ -4,7 +4,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
 
 # Import the Base from the existing schema to attach to the same metadata
-from app.models.base import Base
+from app.db.base_class import Base
 
 class RiskCalculationRun(Base):
     """

@@ -1836,6 +1836,58 @@ def cmd_intelligence_validate(args):
         print("\nCRITICAL ERROR: Temporal leakage detected.")
         sys.exit(1)
 
+def cmd_pipeline_run(args):
+    from analytics.orchestration.engine import OrchestrationEngine
+    db = SessionLocal()
+    try:
+        engine = OrchestrationEngine(db)
+        trigger = "BACKFILL" if args.backfill else "MANUAL"
+        logger.info(f"Triggering {trigger} Pipeline Run...")
+        run_id = engine.start_pipeline(trigger_type=trigger, backfill_date=args.backfill)
+        
+        print(f"\n--- Started Pipeline Run: {run_id} ---")
+        engine.execute_pipeline(run_id)
+        
+        from app.models.orchestration import PipelineRun
+        run = db.query(PipelineRun).filter(PipelineRun.run_id == run_id).first()
+        print(f"Pipeline Completed with Status: {run.status}")
+        
+    finally:
+        db.close()
+
+def cmd_pipeline_status(args):
+    from app.models.orchestration import PipelineRun, PipelineJob
+    db = SessionLocal()
+    try:
+        run = db.query(PipelineRun).order_by(PipelineRun.started_at.desc()).first()
+        if not run:
+            print("No pipeline runs found.")
+            return
+            
+        print(f"\n--- Latest Pipeline Run: {run.run_id} ---")
+        print(f"Status: {run.status}")
+        print(f"Started At: {run.started_at}")
+        print(f"Completed At: {run.completed_at}")
+        print("\nJob Statuses:")
+        jobs = db.query(PipelineJob).filter(PipelineJob.run_id == run.run_id).all()
+        for j in jobs:
+            print(f"  [{j.status}] {j.job_name} (Processed: {j.records_processed}, Failed: {j.records_failed}, Retries: {j.retry_count})")
+            if j.error_summary:
+                print(f"      Error: {j.error_summary}")
+    finally:
+        db.close()
+
+def cmd_pipeline_history(args):
+    from app.models.orchestration import PipelineRun
+    db = SessionLocal()
+    try:
+        runs = db.query(PipelineRun).order_by(PipelineRun.started_at.desc()).limit(10).all()
+        print("\n--- Pipeline History ---")
+        for r in runs:
+            print(f"{r.started_at} | ID: {r.run_id} | Status: {r.status} | Trigger: {r.trigger_type}")
+    finally:
+        db.close()
+
 def _generate_mock_portfolio_data(window: int):
     import numpy as np
     import pandas as pd
@@ -2337,6 +2389,19 @@ def main():
 
     validate_cmd = intelligence_subparsers.add_parser("validate", help="Run temporal integrity tests")
     validate_cmd.set_defaults(func=cmd_intelligence_validate)
+
+    pipeline_parser = subparsers.add_parser("pipeline", help="Data Pipeline Orchestration")
+    pipeline_subparsers = pipeline_parser.add_subparsers(dest="pipeline_command")
+
+    pipeline_run_cmd = pipeline_subparsers.add_parser("run", help="Run the full data pipeline")
+    pipeline_run_cmd.add_argument("--backfill", help="ISO8601 date for backfill")
+    pipeline_run_cmd.set_defaults(func=cmd_pipeline_run)
+
+    pipeline_status_cmd = pipeline_subparsers.add_parser("status", help="Get latest pipeline status")
+    pipeline_status_cmd.set_defaults(func=cmd_pipeline_status)
+
+    pipeline_history_cmd = pipeline_subparsers.add_parser("history", help="Get pipeline run history")
+    pipeline_history_cmd.set_defaults(func=cmd_pipeline_history)
 
     args = parser.parse_args()
 
