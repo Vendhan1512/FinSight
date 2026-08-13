@@ -6,10 +6,12 @@ import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card'
 import { Lock, User } from 'lucide-react';
 
 export const Login = () => {
+  const [isLoginMode, setIsLoginMode] = useState(true);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
   
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -17,14 +19,22 @@ export const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccessMsg('');
     setIsLoading(true);
     
     try {
-      const data = await AuthAPI.login(username, password);
-      await login(data.access_token);
-      navigate('/');
+      if (isLoginMode) {
+        const data = await AuthAPI.login(username, password);
+        await login(data.access_token);
+        navigate('/');
+      } else {
+        await AuthAPI.signup(username, password);
+        setSuccessMsg('Account created successfully! Please sign in.');
+        setIsLoginMode(true);
+        setPassword('');
+      }
     } catch (err: any) {
-      setError(err.response?.data?.detail || err.response?.data?.message || 'Login failed');
+      setError(err.response?.data?.detail || err.response?.data?.message || (isLoginMode ? 'Login failed' : 'Signup failed'));
     } finally {
       setIsLoading(false);
     }
@@ -42,13 +52,20 @@ export const Login = () => {
             <Lock className="text-primary" size={24} />
           </div>
           <CardTitle className="text-2xl">FinSight Intelligence</CardTitle>
-          <p className="text-sm text-textMuted">Enter your credentials to access the dashboard</p>
+          <p className="text-sm text-textMuted">
+            {isLoginMode ? 'Enter your credentials to access the dashboard' : 'Create an account to access the dashboard'}
+          </p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="bg-danger/10 border border-danger/20 text-danger text-sm p-3 rounded-lg text-center">
                 {error}
+              </div>
+            )}
+            {successMsg && (
+              <div className="bg-accent/10 border border-accent/20 text-accent text-sm p-3 rounded-lg text-center">
+                {successMsg}
               </div>
             )}
             
@@ -63,7 +80,7 @@ export const Login = () => {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full bg-surface/50 border border-white/10 rounded-lg py-2 pl-10 pr-3 focus:outline-none focus:border-primary/50 text-textMain"
-                  placeholder="admin, analyst, or viewer"
+                  placeholder={isLoginMode ? "admin, analyst, or viewer" : "Choose a username"}
                   required
                 />
               </div>
@@ -91,8 +108,22 @@ export const Login = () => {
               disabled={isLoading}
               className="w-full btn-primary mt-6 flex justify-center items-center"
             >
-              {isLoading ? 'Authenticating...' : 'Sign In'}
+              {isLoading ? 'Processing...' : (isLoginMode ? 'Sign In' : 'Sign Up')}
             </button>
+            
+            <div className="text-center mt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLoginMode(!isLoginMode);
+                  setError('');
+                  setSuccessMsg('');
+                }}
+                className="text-sm text-primary hover:underline focus:outline-none"
+              >
+                {isLoginMode ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
+              </button>
+            </div>
           </form>
         </CardContent>
       </Card>

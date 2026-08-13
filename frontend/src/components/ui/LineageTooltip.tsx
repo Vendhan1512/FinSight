@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Info } from 'lucide-react';
-import { LineageMetadata } from '../../api/intelligence';
+import type { LineageMetadata } from '../../api/intelligence';
 
 interface LineageTooltipProps {
   lineage: LineageMetadata;

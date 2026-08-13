@@ -15,6 +15,10 @@ class Token(BaseModel):
     access_token: str
     token_type: str
 
+class UserCreate(BaseModel):
+    username: str
+    password: str
+
 class UserResponse(BaseModel):
     user_id: str
     username: str
@@ -47,6 +51,36 @@ def login_access_token(
     return {
         "access_token": access_token,
         "token_type": "bearer"
+    }
+
+@router.post("/signup", response_model=UserResponse)
+def signup(
+    user_in: UserCreate,
+    db: Session = Depends(deps.get_db)
+) -> Any:
+    """
+    Register a new user.
+    """
+    user = db.query(User).filter(User.username == user_in.username).first()
+    if user:
+        raise HTTPException(
+            status_code=400,
+            detail="Username already registered"
+        )
+    
+    user = User(
+        username=user_in.username,
+        hashed_password=security.get_password_hash(user_in.password),
+        role="ANALYST",
+        is_active=True
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return {
+        "user_id": str(user.user_id),
+        "username": user.username,
+        "role": user.role
     }
 
 @router.get("/me", response_model=UserResponse)

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
-import { IntelligenceAPI, IntelligenceTimeline } from '../api/intelligence';
+import { IntelligenceAPI } from '../api/intelligence';
+import type { IntelligenceTimeline } from '../api/intelligence';
 import { DataStateIndicator } from '../components/ui/DataStateIndicator';
 import { LineageTooltip } from '../components/ui/LineageTooltip';
 import { Newspaper, ExternalLink, Search } from 'lucide-react';

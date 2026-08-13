@@ -14,6 +14,11 @@ export const AuthAPI = {
     return res.data;
   },
 
+  signup: async (username: string, password: string) => {
+    const res = await api.post('/auth/signup', { username, password });
+    return res.data;
+  },
+
   me: async () => {
     const res = await api.get('/auth/me');
     return res.data; // { username, role }
